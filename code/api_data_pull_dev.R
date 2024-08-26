@@ -19,7 +19,7 @@ import_table_names = list(
 #create an empty data frame 
 build_df = data.frame(metric=character(), msa=character(), date=as.Date(character()), 
                       value=numeric())
-Sys.getenv("FRED_API_KEY")
+
 #loop through all import tables and pull, clean, and stack data 
 for (item in import_table_names) {
   
@@ -46,3 +46,4 @@ for (item in import_table_names) {
 
 #save to data folder 
 write.csv(build_df, '~/app-cpi-eda/data/fred_data_pull.csv')
+
