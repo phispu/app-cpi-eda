@@ -3,7 +3,7 @@
 ####
 
 #install packages and libraries 
-install.packages(c('httr', 'jsonlite', 'dplyr'))
+install.packages(c('httr', 'jsonlite', 'dplyr', 'renv'))
 
 library('httr')
 library('jsonlite')
@@ -19,7 +19,7 @@ import_table_names = list(
 #create an empty data frame 
 build_df = data.frame(metric=character(), msa=character(), date=as.Date(character()), 
                       value=numeric())
-
+Sys.getenv("FRED_API_KEY")
 #loop through all import tables and pull, clean, and stack data 
 for (item in import_table_names) {
   
