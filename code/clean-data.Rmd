@@ -11,16 +11,18 @@ library(tidyverse)
 library(lubridate)
 library(tigris)
 library(gganimate)
+library(scales)
+library(ggplot2)
 ```
 
 # Import data
 ```{r}
 # Import fred data:
-fred_prelim <- import("data/fred_data_pull.csv") %>% 
+fred_prelim <- import("../data/fred_data_pull.csv") %>% 
   as_tibble()
 
 # Import/prep spatial data:
-states_sf <- st_read("data/cb_2018_us_state_20m/cb_2018_us_state_20m.shp") %>% 
+states_sf <- st_read("../data/cb_2018_us_state_20m/cb_2018_us_state_20m.shp") %>% 
   # Figure out code to add inset for these states
   dplyr::filter(!NAME %in% c("Alaska", "Hawaii","Puerto Rico")) 
 cbsa_sf_prelim <- core_based_statistical_areas()
@@ -42,13 +44,25 @@ cbsa_df <- bind_cols(cbsa_name, cbsa_coord) %>%
 
 # Clean data
 ```{r}
-fred <- fred_prelim %>% 
+fred_vase <- fred_prelim %>% 
   dplyr::select(-V1) %>% 
   dplyr::mutate(year = year(date)) %>% 
   dplyr::group_by(msa, metric, year) %>% 
   dplyr::summarize(value = median(value)) %>% 
   dplyr::ungroup() %>% 
   dplyr::left_join(cbsa_df, by = "msa")
+
+fred_ratio = fred_base |>
+  left_join(fred_base, by = c('msa', 'year'), relationship = 'many-to-many') |>
+  filter(metric.x != metric.y) |>
+  mutate(metric = paste(metric.x, metric.y, sep = '_'),
+         value = value.x / value.y) |>
+  select(msa, metric, year, value) 
+
+fred_stack = fred_base |>
+  mutate(ratio = 0) |>
+  rbind(fred_ratio |>
+          mutate(ratio = 1))
   
 ```
 
@@ -63,22 +77,65 @@ fred_filter <- fred
 # Graphs
 ## By Time
 ```{r}
-fred_filter %>% 
-  ggplot(aes(x = year, y = value, color = msa)) +
+
+
+library(scales)
+library(ggplot2)
+
+options(scipen = 999)
+
+pick_msa = 'SF' 
+pick_metric_1 = 'CPI'
+pick_metric_2 = 'Income'
+pick_ratio = paste(pick_metric_1, pick_metric_2, sep = '_')
+
+fred_filter_msa = fred_stack |>
+  dplyr::filter(msa == {pick_msa}) 
+
+fred_filter_msa_base = fred_filter_msa |>
+  filter(metric %in% c(pick_metric_1, pick_metric_2)) |>
+  mutate(metric = case_when(metric == pick_metric_1 ~ 'metric_1',
+                            metric == pick_metric_2 ~ 'metric_2')) |>
+  pivot_wider(id_cols = year, names_from = metric, values_from = value)
+
+# Function factory for secondary axis transforms
+func_secondary_axis <- function(primary, secondary) {
+
+  from <- range(secondary, na.rm = TRUE)
+  to   <- range(primary, na.rm = TRUE)
+  # Forward transform for the data
+  forward <- function(x) {
+    rescale(x, from = from, to = to)
+  }
+  # Reverse transform for the secondary axis
+  reverse <- function(x) {
+    rescale(x, from = to, to = from)
+  }
+  list(fwd = forward, rev = reverse)
+}
+
+sec = with(fred_filter_msa_base, func_secondary_axis(metric_1, metric_2))
+
+p1 = fred_filter_msa_base |>
+  ggplot(aes(x = year)) +
+  geom_line(aes(y = metric_1), color = 'blue') +
+  geom_line(aes(y = sec$fwd(metric_2)), color = 'red')+
+  scale_y_continuous(sec.axis = sec_axis(~sec$rev(.), name = pick_metric_2)) +
+  labs(x = 'year', y = pick_metric_1)
+
+p2 = fred_filter_msa |>
+  filter(metric == pick_ratio) |>
+  ggplot(aes(x = year, y = value, color = metric)) + 
   geom_line() +
-  facet_grid(metric ~ ., scales = "free") +
-  theme_bw() +
-  labs(title = "Change Over Time", 
-       x = "Year", y = "Value", color = "MSA") +
+  theme_bw() + 
+  labs(title = "Change Over Time",
+       x = "Year", y = "Value", color = "Metric") + 
   theme(legend.position = "bottom",
         plot.title = element_text(hjust = 0.5, face = "bold"))
 
-# ratio plot (separate tab?):
-  # only one group for msa, later potentially add Census regions\
-  # facets: 
-    # facet 1: ratio
-    # facet 2: metric, denom (income-esque)
+p1 + p2 + plot_layout(ncol = 1, nrow = 2)
 
+```
 
 
 
