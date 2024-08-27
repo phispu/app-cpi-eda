@@ -45,7 +45,11 @@ cbsa_df <- bind_cols(cbsa_name, cbsa_coord) %>%
 fred <- fred_prelim %>% 
   dplyr::select(-V1) %>% 
   dplyr::mutate(year = year(date)) %>% 
+  dplyr::group_by(msa, metric, year) %>% 
+  dplyr::summarize(value = median(value)) %>% 
+  dplyr::ungroup() %>% 
   dplyr::left_join(cbsa_df, by = "msa")
+  
 ```
 
 # Filter
@@ -68,6 +72,16 @@ fred_filter %>%
        x = "Year", y = "Value", color = "MSA") +
   theme(legend.position = "bottom",
         plot.title = element_text(hjust = 0.5, face = "bold"))
+
+# ratio plot (separate tab?):
+  # only one group for msa, later potentially add Census regions\
+  # facets: 
+    # facet 1: ratio
+    # facet 2: metric, denom (income-esque)
+
+
+
+
 ```
 
 ## By Area
