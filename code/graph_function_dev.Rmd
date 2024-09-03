@@ -12,6 +12,7 @@ Required libraries
 
 library(scales)
 library(ggplot2)
+library(ggrepel)
 
 options(scipen = 999)
 
@@ -93,16 +94,19 @@ func_ratio_graph = function(input_dataset, pick_metric_1, pick_metric_2){
   p1 = fred_filter_msa_base |>
     ggplot2::ggplot(aes(x = year)) +
     #axis for metric 1
-    ggplot2::geom_line(aes(y = metric_1), 
-                       color = colors[2]) +
-    #axis for metric 2 
-    ggplot2::geom_line(aes(y = secondary_axis$fwd(metric_2)), 
-                       color = colors[3])+
+    ggplot2::geom_line(aes(y = metric_1, 
+                           color = pick_metric_1)) +
+    #axis for metric 2
+    ggplot2::geom_line(aes(y = secondary_axis$fwd(metric_2), 
+                           color = pick_metric_2)) +
     ggplot2::xlim(c(min_year, max_year)) +
+    ggplot2::scale_color_manual(values = c(colors[2], colors[3])) +
     ggplot2::scale_y_continuous(sec.axis = sec_axis(~secondary_axis$rev(.), name = pick_metric_2)) +
-    ggplot2::labs(x = element_blank(), 
+    ggplot2::labs(x = element_blank(),
                   y = pick_metric_1) +
-    ggplot2::theme_minimal()
+    ggplot2::theme_minimal() +
+    ggplot2::theme(legend.title = element_blank(), 
+                   legend.position = c(0.1, 0.85))
   
   #bottom facet, ratio plotted 
   p2 = input_dataset |>
@@ -114,8 +118,7 @@ func_ratio_graph = function(input_dataset, pick_metric_1, pick_metric_2){
     ggplot2::labs(x = "Year", 
                   y = paste0("Ratio of ", pick_metric_1, " to ", pick_metric_2, sep = ''), 
                   color = "Metric") + 
-    ggplot2::theme_minimal() + 
-    ggplot2::theme(legend.position = 'none') 
+    ggplot2::theme_minimal() 
     
   #stack plots together 
   ratio_line_graph = p1 + p2 + plot_layout(ncol = 1, nrow = 2)
@@ -155,6 +158,8 @@ wrapper_graph_function = function(pick_msa, pick_metric_1, pick_metric_2 = NULL)
   }
   
 }
+
+wrapper_graph_function(pick_msa = 'SF', pick_metric_1 = 'CPI', pick_metric_2 = 'Income')
 
 ```
 
