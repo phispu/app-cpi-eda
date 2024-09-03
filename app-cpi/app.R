@@ -221,7 +221,7 @@ server <- function(input, output, session) {
                 gganimate::animate(plot_map, renderer = gifski_renderer(), nframes = 20,
                                    height = 700, width = 1000))
 
-      Return a list containing the filename
+      # Return a list containing the filename
       list(src = "outfile.gif", contentType = "image/gif")
     }
   }, deleteFile = TRUE)
