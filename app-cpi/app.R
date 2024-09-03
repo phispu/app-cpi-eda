@@ -11,6 +11,7 @@ library(gganimate)
 library(sfarrow)
 
 ## Setup
+thematic::thematic_shiny()
 
 colors <-  c("#0d3b66", # yale blue
              "#ee964b", # sandy brown
