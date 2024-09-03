@@ -1,5 +1,5 @@
 ## Libraries
-library(shiny)
+# library(shiny)
 library(bslib)
 library(shinycssloaders)
 library(tidyverse)
@@ -12,9 +12,6 @@ library(sfarrow)
 
 ## Setup
 
-# projections
-# toggle anim
-
 colors <-  c("#0d3b66", # yale blue
              "#ee964b", # sandy brown
              "#8fc93a", # yellow green
@@ -25,7 +22,6 @@ fred <- read_csv(here("data/fred_data_clean.csv"))
 
 # Spatial: states
 states_sf <- st_read_parquet(here("data/states_sf.parquet")) 
-# fred %>% count(metric)
 
 
 ## App 
@@ -220,12 +216,12 @@ server <- function(input, output, session) {
               text = element_text(size = input$map_tsize)) +
         scale_size_area(max_size = input$map_psize) +
         transition_time(year)
-      
-      anim_save("outfile.gif", 
+
+      anim_save("outfile.gif",
                 gganimate::animate(plot_map, renderer = gifski_renderer(), nframes = 20,
-                                   height = 700, width = 1000)) 
-    
-      # Return a list containing the filename
+                                   height = 700, width = 1000))
+
+      Return a list containing the filename
       list(src = "outfile.gif", contentType = "image/gif")
     }
   }, deleteFile = TRUE)
