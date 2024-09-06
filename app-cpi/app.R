@@ -24,6 +24,8 @@ fred <- read_csv(here("data/fred_data_clean.csv"))
 # Spatial: states
 states_sf <- st_read_parquet(here("data/states_sf.parquet")) 
 
+source(here('code/graphing_functions.R'))
+
 
 ## App 
 # UI #############################
@@ -88,14 +90,13 @@ ui <- bslib::page_navbar(
 server <- function(input, output, session) {
   # Clean Data
   clean_yr <- reactive({
+    
     fred_msa <- fred |> 
       dplyr::filter(msa %in% input$yr_smsa)
+    
     fred_smetric1 <- fred_msa |> 
-      dplyr::filter(metric == input$yr_smetric1) 
-    fred_smetric2 <- fred_msa |> 
-      dplyr::filter(metric == input$yr_smetric2) |> 
-      dplyr::transmute(msa = msa, year = year,
-                       value2 = value)
+      dplyr::filter(metric %in% c(input$yr_smetric1, input$yr_smetric2))
+    
     fred_ratio <- fred_msa |> 
       dplyr::filter(metric == str_c(input$yr_smetric1, "_", input$yr_smetric2))
     
@@ -103,8 +104,12 @@ server <- function(input, output, session) {
     list(fred_smetric1 = fred_smetric1,
          fred_smetric2 = fred_smetric2,
          fred_ratio = fred_ratio)
+    
   })
+  
+  
   clean_map <- reactive({
+    
     fred_smetric <- fred |>
       dplyr::filter(metric == input$map_smetric)
     fred_syear <- fred_smetric |> 
@@ -115,7 +120,10 @@ server <- function(input, output, session) {
     list(fred_smetric = fred_smetric,
          fred_syear = fred_syear,
          fred_syear_rng = fred_syear_rng) 
+    
   })
+  
+  
   # Update filter
   observe({
     fred_yr <- clean_map() |>
@@ -127,18 +135,19 @@ server <- function(input, output, session) {
     updateSliderInput(session, inputId = "map_syear_rng",
                       min = min_yr, max = max_yr)
   })
+  
+  
   # Create plots
   output$plot_yr <- renderPlot({
     fred_smetric1 <- clean_yr() |> pluck("fred_smetric1")
     fred_smetric2 <- clean_yr() |> pluck("fred_smetric2")
     fred_ratio <- clean_yr() |> pluck("fred_ratio")
     
-    if(input$yr_smetric2 == "None"){
-      fred_yr <- fred_smetric1
-    } else {
-      fred_yr <- fred_smetric1 |> 
-        dplyr::left_join(fred_smetric2, by = c("msa", "year"))
-    }
+    plot = wrapper_graph_function()
+    
+    wrapper_graph_function = function(pick_msa, pick_metric_1, pick_metric_2 = NULL)
+    
+    
     
     plot_yr1 <- fred_yr |> 
       ggplot(aes(x = year, color = msa)) +
