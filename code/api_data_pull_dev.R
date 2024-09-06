@@ -2,9 +2,6 @@
 # Develop code to pull data from FRED API
 ####
 
-#install packages and libraries 
-install.packages(c('httr', 'jsonlite', 'dplyr', 'renv'))
-
 library('httr')
 library('jsonlite')
 library('dplyr')
