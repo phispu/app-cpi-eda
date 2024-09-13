@@ -1,0 +1,50 @@
+```{r}
+
+fred_clean <- import('~/app-cpi-eda/data/fred_data_clean.csv') |>
+  as_tibble() |>
+  select(-V1)
+
+```
+
+
+## By Area
+```{r}
+# To do:
+# add projection
+# add north arrow/scalebar
+
+# Require: choose variable
+# Conditional: choose year, but can animate over year
+
+# Data prep
+fred_map_static <- fred_filter %>% 
+  dplyr::filter(year == 2000, metric == "CPI")
+fred_map_anim <- fred_filter %>% 
+  dplyr::filter(metric == "CPI")
+
+# static map
+ggplot() +
+  geom_sf(data = states_sf, fill = "white") +
+  geom_point(data = fred_map_static,
+             aes(x = lon, y = lat, size = value),
+             color = "skyblue", alpha = 0.2) +
+  geom_text(data = fred_map_static, aes(x = lon, y = lat, label = msa),
+            nudge_y = 1.5, nudge_x = -1) +
+  theme_void() +
+  labs(size = "Value") +
+  theme(legend.position = "bottom")
+# animated map
+ggplot() +
+  geom_sf(data = states_sf, fill = "white") +
+  geom_point(data = fred_map_anim,
+             aes(x = lon, y = lat, size = value),
+             color = "skyblue", alpha = 0.2) +
+  geom_text(data = fred_map_anim, aes(x = lon, y = lat, label = msa),
+            nudge_y = 1.5, nudge_x = -1) +
+  theme_void() +
+  labs(title = "Year: {frame_time}", size = "Value") +
+  theme(legend.position = "bottom") +
+  transition_time(year)
+
+```
+
