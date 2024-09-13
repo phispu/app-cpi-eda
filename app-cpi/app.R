@@ -156,7 +156,7 @@ server <- function(input, output, session) {
       pick_metric_2 = input$yr_smetric2)
     
     plot
-
+#jenny keeping these in as comments in case we want to use some of this info in updating the plot function 
     # plot_yr1 <- fred_yr |> 
     #   ggplot(aes(x = year, color = msa)) +
     #   geom_line(aes(y = value)) +
