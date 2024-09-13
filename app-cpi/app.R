@@ -19,10 +19,10 @@ colors <-  c("#0d3b66", # yale blue
              "#252b2d", # gunmetal
              "#e1faf9") # light cyan 
 
-fred <- read_csv(here("data/fred_data_clean.csv")) 
+fred <- read_csv(here("app-cpi/app_data/fred_data_clean.csv"), show_col_types = FALSE) 
 
 # Spatial: states
-states_sf <- st_read_parquet(here("data/states_sf.parquet")) 
+states_sf <- st_read_parquet(here("app-cpi/app_data/states_sf.parquet")) 
 
 source(here('code/graphing_functions.R'))
 
