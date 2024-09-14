@@ -1,50 +1,44 @@
-```{r}
+func_map_static = function(input_data, state_data, input_metric, map_psize, map_tsize) {
+  
+  ggplot(data = input_data) +
+    geom_sf(data = state_data, fill = "white") +
+    geom_point(aes(x = lon, y = lat, size = value, color = value),
+               alpha = 0.5) + # skyblue
+    geom_text(aes(x = lon, y = lat, label = msa),
+              position = position_nudge(x = -5000*map_psize, y = 7000*map_psize),
+              size.unit = "pt", size = map_tsize*0.9) +
+    theme_void() +
+    guides(color = guide_legend(title = input_metric),
+           size = guide_legend(title = input_metric)) +
+    theme(legend.position = "bottom",
+          text = element_text(size = map_tsize)) +
+    scale_size_area(max_size = map_psize)
+  
+}
 
-fred_clean <- import('~/app-cpi-eda/data/fred_data_clean.csv') |>
-  as_tibble() |>
-  select(-V1)
-
-```
-
-
-## By Area
-```{r}
-# To do:
-# add projection
-# add north arrow/scalebar
-
-# Require: choose variable
-# Conditional: choose year, but can animate over year
-
-# Data prep
-fred_map_static <- fred_filter %>% 
-  dplyr::filter(year == 2000, metric == "CPI")
-fred_map_anim <- fred_filter %>% 
-  dplyr::filter(metric == "CPI")
-
-# static map
-ggplot() +
-  geom_sf(data = states_sf, fill = "white") +
-  geom_point(data = fred_map_static,
-             aes(x = lon, y = lat, size = value),
-             color = "skyblue", alpha = 0.2) +
-  geom_text(data = fred_map_static, aes(x = lon, y = lat, label = msa),
-            nudge_y = 1.5, nudge_x = -1) +
-  theme_void() +
-  labs(size = "Value") +
-  theme(legend.position = "bottom")
-# animated map
-ggplot() +
-  geom_sf(data = states_sf, fill = "white") +
-  geom_point(data = fred_map_anim,
-             aes(x = lon, y = lat, size = value),
-             color = "skyblue", alpha = 0.2) +
-  geom_text(data = fred_map_anim, aes(x = lon, y = lat, label = msa),
-            nudge_y = 1.5, nudge_x = -1) +
-  theme_void() +
-  labs(title = "Year: {frame_time}", size = "Value") +
-  theme(legend.position = "bottom") +
-  transition_time(year)
-
-```
-
+func_map_animate = function(input_data, state_data, input_metric, map_psize, map_tsize){
+  
+  plot_map <- ggplot(data = input_data) +
+    geom_sf(data = state_data, fill = "white") +
+    geom_point(aes(x = lon, y = lat, size = value, color = value),
+               alpha = 0.5) +
+    geom_text(aes(x = lon, y = lat, label = msa),
+              position = position_nudge(x = -5000*map_psize, y = 7000*map_psize),
+              size.unit = "pt", size = map_tsize*0.9) +
+    theme_void() +
+    guides(color = guide_legend(title = input_metric),
+           size = guide_legend(title = input_metric)) +
+    labs(title = "Year: {round(frame_time,0)}") +
+    theme(legend.position = "bottom",
+          text = element_text(size = map_tsize)) +
+    scale_size_area(max_size = map_psize) +
+    transition_time(year)
+  
+  anim_save("outfile.gif",
+            gganimate::animate(plot_map, renderer = gifski_renderer(), nframes = 20,
+                               height = 700, width = 1000))
+  
+  # Return a list containing the filename
+  list(src = "outfile.gif", contentType = "image/gif")
+  
+}

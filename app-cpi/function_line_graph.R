@@ -68,9 +68,9 @@ func_ratio_graph = function(input_dataset, pick_metric_1, pick_metric_2){
     ggplot2::scale_y_continuous(sec.axis = sec_axis(~secondary_axis$rev(.), name = pick_metric_2)) +
     ggplot2::labs(x = element_blank(),
                   y = pick_metric_1) +
-    ggplot2::theme_minimal() +
-    ggplot2::theme(legend.title = element_blank(), 
-                   legend.position = c(0.1, 0.85))
+    ggplot2::theme_minimal()
+  
+  print(pick_ratio)
   
   #bottom facet, ratio plotted 
   p2 = input_dataset |>
@@ -110,8 +110,9 @@ wrapper_graph_function = function(input_dataset, pick_msa, pick_metric_1, pick_m
     
   }else{
     
-    title_text = paste0(pick_metric_1, ' & ', pick_metric_2, ' in ', pick_msa, ', ', 
-                        min(input_dataset$year), '-', max(input_dataset$year))
+    title_text = paste0(pick_metric_1, ' & ', pick_metric_2, ' in ', 
+                        paste0(pick_msa, collapse=' and '), ', ', min(input_dataset$year), '-', 
+                        max(input_dataset$year))
     
     output_double_metric_graph = 
       func_ratio_graph(input_dataset = input_dataset, pick_metric_1 = pick_metric_1, 
@@ -124,6 +125,15 @@ wrapper_graph_function = function(input_dataset, pick_msa, pick_metric_1, pick_m
   
 }
 
-fred_smetric = fred_smetric |> filter(msa == 'SFO')
+#fred_msa <- fred_data |> 
+  #dplyr::filter(msa %in% c('SFO', 'NEW'))
 
-#wrapper_graph_function(input_dataset = fred_smetric, pick_msa = c('SFO'), pick_metric_1 = 'personal_income', pick_metric_2 = 'cpi_all')
+#fred_smetric <- fred_msa |> 
+ # dplyr::filter(metric %in% 
+ #                 c('cpi_all', 'personal_income', str_c('personal_income', '_', 
+  #                                                              'cpi_all')))
+
+#wrapper_graph_function(input_dataset = fred_smetric, pick_msa = c('SFO', 'NEW'), pick_metric_1 = 'personal_income', pick_metric_2 = 'cpi_all')
+
+
+

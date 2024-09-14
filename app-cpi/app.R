@@ -9,6 +9,8 @@ library(ggh4x)
 library(patchwork)
 library(gganimate)
 library(sfarrow)
+library(gifski)
+library(av)
 
 ## Setup
 thematic::thematic_shiny()
@@ -27,7 +29,7 @@ fred_data = arrow::read_parquet(paste0(data_file_path, "/fred_data_clean.parquet
 states_sf <- st_read_parquet(paste0(data_file_path, "/states_sf.parquet")) 
 
 source(here('app-cpi/function_line_graph.R'))
-#source(here('app-cpi/function_map.R'))
+source(here('app-cpi/function_map.R'))
 
 
 ## App 
@@ -99,8 +101,8 @@ server <- function(input, output, session) {
     
     fred_smetric <- fred_msa |> 
       dplyr::filter(metric %in% 
-                      c(input$yr_smetric1, input$yr_smetric2, str_c(input$yr_smetric1, '_', 
-                                                                    input$yr_smetric2)))
+                      c(input$yr_smetric1, input$yr_smetric2, 
+                        str_c(input$yr_smetric1, '_', input$yr_smetric2)))
     
     # Return
     fred_smetric = fred_smetric
@@ -199,50 +201,34 @@ server <- function(input, output, session) {
   }, height = 700, width = 1000)
   
   output$plot_map_static <- renderPlot({
+    
     if(!input$map_sanim){
-      fred_year <- clean_map() |> purrr::pluck("fred_syear")
-      ggplot(data = fred_year) +
-        geom_sf(data = states_sf, fill = "white") +
-        geom_point(aes(x = lon, y = lat, size = value, color = value),
-                   alpha = 0.5) + # skyblue
-        geom_text(aes(x = lon, y = lat, label = msa),
-                  position = position_nudge(x = -5000*input$map_psize, y = 7000*input$map_psize),
-                  size.unit = "pt", size = input$map_tsize*0.9) +
-        theme_void() +
-        guides(color = guide_legend(title = input$map_smetric),
-               size = guide_legend(title = input$map_smetric)) +
-        theme(legend.position = "bottom",
-              text = element_text(size = input$map_tsize)) +
-        scale_size_area(max_size = input$map_psize)
+      
+      fred_year = clean_map() |> purrr::pluck("fred_syear")
+      
+      func_map_static(input_data = fred_year, state_data = states_sf,
+                      input_metric = input$smetric,map_psize = input$map_psize, 
+                      map_tsize = input$map_tsize)
+      
     } 
-  }, height = 700, width = 1000)
+  }, 
+  height = 700, width = 1000)
+  
   output$plot_map_anim <- renderImage({
-  if (input$map_sanim){
+    
+    if (input$map_sanim){
+      
       fred_syear_rng <- clean_map() |> purrr::pluck("fred_syear_rng")
-      plot_map <- ggplot(data = fred_syear_rng) +
-        geom_sf(data = states_sf, fill = "white") +
-        geom_point(aes(x = lon, y = lat, size = value, color = value),
-                   alpha = 0.5) +
-        geom_text(aes(x = lon, y = lat, label = msa),
-                  position = position_nudge(x = -5000*input$map_psize, y = 7000*input$map_psize),
-                  size.unit = "pt", size = input$map_tsize*0.9) +
-        theme_void() +
-        guides(color = guide_legend(title = input$map_smetric),
-               size = guide_legend(title = input$map_smetric)) +
-        labs(title = "Year: {round(frame_time,0)}") +
-        theme(legend.position = "bottom",
-              text = element_text(size = input$map_tsize)) +
-        scale_size_area(max_size = input$map_psize) +
-        transition_time(year)
-
-      anim_save("outfile.gif",
-                gganimate::animate(plot_map, renderer = gifski_renderer(), nframes = 20,
-                                   height = 700, width = 1000))
-
-      # Return a list containing the filename
-      list(src = "outfile.gif", contentType = "image/gif")
+    
+      func_map_animate(input_data = fred_syear_rng, state_data = states_sf, 
+                       input_metric = input$smetric, map_psize = input$map_psize, 
+                       map_tsize = input$map_tsize)
+      
     }
-  }, deleteFile = TRUE)
+      
+  }, 
+  deleteFile = TRUE)
+  
 }
 
 
