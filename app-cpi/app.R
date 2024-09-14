@@ -15,10 +15,13 @@ library(av)
 ## Setup
 thematic::thematic_shiny()
 
-colors <-  c("#0d3b66", # yale blue
+colors <-  c('#A5CDF3', # Uranian blue
              "#ee964b", # sandy brown
              "#8fc93a", # yellow green
-             "#252b2d", # gunmetal
+             '#188C88', # dark cyan 
+             "#0d3b66", # yale blue
+             '#BB6011', # Alloy orange
+             '#395016', # Dark moss green 
              "#e1faf9") # light cyan 
 
 data_file_path = here('app-cpi/app_data/')
@@ -31,6 +34,17 @@ states_sf <- st_read_parquet(paste0(data_file_path, "/states_sf.parquet"))
 source(here('app-cpi/function_line_graph.R'))
 source(here('app-cpi/function_map.R'))
 
+msa_prep = fred_data |>
+  distinct(msa, msa_label_short, msa_label_long) |>
+  arrange(msa_label_short)
+
+metric_prep = fred_data |>
+  filter(!is.na(metric_label_short)) |>
+  distinct(metric, metric_label_short, metric_label_long) |>
+  arrange(metric_label_short) 
+
+metric_prep_2 = metric_prep |>
+  rbind(c(msa = 'None', metric_label_short = NA, metric_label_long = NA))
 
 ## App 
 # UI #############################
@@ -42,12 +56,18 @@ ui <- bslib::page_navbar(
     layout_sidebar(
       sidebar = sidebar(
         strong("Filter Options"), 
-        checkboxGroupInput(inputId = "yr_smsa", label = "MSA",
-                           choices = c("SFO", "NEW"), selected = "SFO"),
+        checkboxGroupInput(inputId = "yr_smsa", label = "City",
+                           choiceValues = msa_prep$msa, 
+                           choiceNames = msa_prep$msa_label_short,
+                           selected = "SFO"),
         radioButtons(inputId = "yr_smetric1", label = "Metric 1",
-                     choices = c("cpi_all", "personal_income"), selected = "cpi_all"),
+                     choiceValues = metric_prep$metric,
+                     choiceNames = metric_prep$metric_label_short,
+                     selected = 'cpi_all'),
         radioButtons(inputId = "yr_smetric2", label = "Metric 2",
-                     choices = c("None", "cpi_all", "personal_income"), selected = "None"),
+                     choiceValues = metric_prep_2$metric,
+                     choiceNames = metric_prep_2$metric_label_short,
+                     selected = 'None'),
         conditionalPanel(
           condition = "input.yr_smetric2 != 'None'", 
           checkboxInput(inputId = "ratio", label = "Plot Ratios?",
@@ -93,11 +113,12 @@ ui <- bslib::page_navbar(
 
 # Server #############################
 server <- function(input, output, session) {
+  
   # Clean Data
   clean_yr <- reactive({
     
     fred_msa <- fred_data |> 
-      dplyr::filter(msa %in% input$yr_smsa)
+      dplyr::filter(msa %in% input$yr_smsa) 
     
     fred_smetric <- fred_msa |> 
       dplyr::filter(metric %in% 
@@ -155,50 +176,12 @@ server <- function(input, output, session) {
     
     plot = wrapper_graph_function(
       input_dataset = fred_smetric, pick_msa = input$yr_smsa, pick_metric_1 = input$yr_smetric1, 
-      pick_metric_2 = input$yr_smetric2)
+      pick_metric_2 = input$yr_smetric2, ratio_toggle = input$ratio)
     
     plot
-#jenny keeping these in as comments in case we want to use some of this info in updating the plot function 
-    # plot_yr1 <- fred_yr |> 
-    #   ggplot(aes(x = year, color = msa)) +
-    #   geom_line(aes(y = value)) +
-    #   # Add manual colors?
-    #   labs(x = 'Year', 
-    #        y = input$yr_smetric1,
-    #        color = "MSA") +
-    #   theme_minimal() +
-    #   theme(legend.position = "bottom",
-    #         text = element_text(size = input$yr_tsize))
-    # 
-    # if(input$yr_smetric2 == "None"){
-    #   plot_yr1 <- plot_yr1
-    # } else {
-    #   sec <- ggh4x::help_secondary(fred_yr, 
-    #                                primary = value, secondary = value2, method = "fit",
-    #                                name = input$yr_smetric2)
-    #   plot_yr1 <- plot_yr1 +
-    #     geom_line(aes(y = sec$proj(value2)), linetype = "dotted") +
-    #     scale_y_continuous(sec.axis = sec)
-    # }
-    # 
-    # if(input$ratio != TRUE){
-    #   plot_yr1
-    # } else {
-    #   plot_yr1 <- plot_yr1 + guides(color = "none")
-    #   plot_yr2 <- fred_ratio |>
-    #     ggplot(aes(x = year, color = msa)) +
-    #     geom_line(aes(y = value)) + 
-    #     labs(x = 'Year',
-    #          y = str_c(input$yr_smetric1, "/", input$yr_smetric2),
-    #          color = "MSA") +
-    #     theme_minimal() +
-    #     theme(legend.position = "bottom",
-    #           text = element_text(size = input$yr_tsize))
-    #   plot_yr1 / plot_yr2
-    # }
-    
     
   }, height = 700, width = 1000)
+  
   
   output$plot_map_static <- renderPlot({
     

@@ -22,13 +22,21 @@ func_secondary_axis <- function(primary, secondary) {
 
 func_single_graph = function(input_dataset, pick_metric_1){
   
+  metric_label_1 = metric_prep$metric_label_short[metric_prep$metric == pick_metric_1]
+  
   single_line_graph = input_dataset |>
     ggplot2::ggplot(aes(x = year, y = value)) +
     #axis for metric 1
-    ggplot2::geom_line(aes(color = msa_label_short)) +
+    ggplot2::geom_line(aes(color = msa_label_short), linewidth = 2) +
     ggplot2::labs(x = 'Year', 
-                  y = pick_metric_1) +
-    ggplot2::theme_minimal()
+                  y = metric_label_1) +
+    ggplot2::theme_minimal() +
+    ggplot2::scale_color_manual(values = colors) +
+    ggplot2::guides(color = guide_legend(title = "City")) +
+    ggplot2::theme(legend.title = element_text('hjust', size = 20, color = 'white'),
+                   legend.text = element_text(size = 20, color = 'white'),
+                   axis.text = element_text(size = 20, color = 'white'),
+                   axis.title = element_text(size = 20, color = 'white')) 
   
   return(single_line_graph)
   
@@ -37,9 +45,12 @@ func_single_graph = function(input_dataset, pick_metric_1){
 
 
 
-func_ratio_graph = function(input_dataset, pick_metric_1, pick_metric_2){ 
+func_ratio_graph = function(input_dataset, pick_metric_1, pick_metric_2, ratio_toggle){ 
   
   pick_ratio = paste(pick_metric_1, pick_metric_2, sep = '_')
+  
+  metric_label_1 = metric_prep$metric_label_short[metric_prep$metric == pick_metric_1]
+  metric_label_2 = metric_prep$metric_label_short[metric_prep$metric == pick_metric_2]
   
   fred_filter_msa_base = input_dataset |>
     dplyr::filter(metric %in% c(pick_metric_1, pick_metric_2)) |>
@@ -47,7 +58,7 @@ func_ratio_graph = function(input_dataset, pick_metric_1, pick_metric_2){
       metric = dplyr::case_when(
         metric == pick_metric_1 ~ 'metric_1',
         metric == pick_metric_2 ~ 'metric_2')) |>
-    tidyr::pivot_wider(id_cols = c(year, msa), names_from = metric, values_from = value) 
+    tidyr::pivot_wider(id_cols = c(year, msa, msa_label_short), names_from = metric, values_from = value) 
   
   secondary_axis = with(fred_filter_msa_base, func_secondary_axis(metric_1, metric_2))
   
@@ -59,16 +70,20 @@ func_ratio_graph = function(input_dataset, pick_metric_1, pick_metric_2){
     ggplot2::ggplot(aes(x = year)) +
     #axis for metric 1
     ggplot2::geom_line(aes(y = metric_1, 
-                           color = msa), linetype = 'solid') +
+                           color = msa_label_short), linetype = 'solid', linewidth = 2) +
     #axis for metric 2
     ggplot2::geom_line(aes(y = secondary_axis$fwd(metric_2), 
-                           color = msa), linetype = 'dotted') +
+                           color = msa_label_short), linetype = 'longdash', linewidth = 2) +
     ggplot2::xlim(c(min_year, max_year)) +
-    ggplot2::scale_color_manual(values = c(colors[2], colors[3])) +
-    ggplot2::scale_y_continuous(sec.axis = sec_axis(~secondary_axis$rev(.), name = pick_metric_2)) +
+    ggplot2::scale_color_manual(values = colors) +
+    ggplot2::scale_y_continuous(sec.axis = sec_axis(~secondary_axis$rev(.), name = metric_label_2)) +
     ggplot2::labs(x = element_blank(),
-                  y = pick_metric_1) +
-    ggplot2::theme_minimal()
+                  y = metric_label_1) +
+    ggplot2::theme_minimal() +
+    ggplot2::theme(legend.title = element_text('hjust', size = 20, color = 'white'),
+                   legend.text = element_text(size = 20, color = 'white'),
+                   axis.text = element_text(size = 20, color = 'white'),
+                   axis.title = element_text(size = 20, color = 'white'))
   
   print(pick_ratio)
   
@@ -77,15 +92,28 @@ func_ratio_graph = function(input_dataset, pick_metric_1, pick_metric_2){
     dplyr::filter(metric == pick_ratio) |>
     ggplot2::ggplot(aes(x = year, 
                         y = value)) + 
-    ggplot2::geom_line(aes(color = msa)) +
+    ggplot2::geom_line(aes(color = msa_label_short), linewidth = 2) +
     ggplot2::xlim(c(min_year, max_year)) +
     ggplot2::labs(x = "Year", 
-                  y = paste0("Ratio of ", pick_metric_1, " to ", pick_metric_2, sep = ''), 
-                  color = "Metric") + 
-    ggplot2::theme_minimal() 
+                  y = paste0("Ratio of ", metric_label_1, " to ", metric_label_2, sep = ''), 
+                  color = "msa_label_short") + 
+    ggplot2::theme_minimal() +
+    ggplot2::scale_color_manual(values = colors) +
+    ggplot2::theme(legend.title = element_text('hjust', size = 20, color = 'white'),
+                   legend.text = element_text(size = 20, color = 'white'),
+                   axis.text = element_text(size = 20, color = 'white'),
+                   axis.title = element_text(size = 20, color = 'white'))
   
-  #stack plots together 
-  ratio_line_graph = p1 + p2 + plot_layout(ncol = 1, nrow = 2)
+  if(ratio_toggle == FALSE) {
+    
+    ratio_line_graph = p1
+    
+  }else{
+  
+    #stack plots together 
+    ratio_line_graph = p1 + p2 + plot_layout(ncol = 1, nrow = 2)
+
+  }
   
   return(ratio_line_graph)
   
@@ -94,29 +122,31 @@ func_ratio_graph = function(input_dataset, pick_metric_1, pick_metric_2){
 
 
 
-wrapper_graph_function = function(input_dataset, pick_msa, pick_metric_1, pick_metric_2 = NULL){
+wrapper_graph_function = function(input_dataset, pick_msa, pick_metric_1, pick_metric_2 = NULL,
+                                  ratio_toggle = FALSE){
   
   if(pick_metric_2 == 'None'){
     
-    title_text = paste0(pick_metric_1, ' in ', pick_msa, ', ', min(input_dataset$year), '-', 
-                        max(input_dataset$year))
+    title_text = paste0(metric_prep$metric_label_short[metric_prep$metric == pick_metric_1], ' in ', 
+                        paste0(msa_prep$msa_label_short[msa_prep$msa %in% pick_msa], collapse = ' and '), ', ', 
+                        min(input_dataset$year), '-', max(input_dataset$year))
     
     output_single_metric_graph = 
-      func_single_graph(input_dataset = input_dataset,  
-                        pick_metric_1 = pick_metric_1) +
+      func_single_graph(input_dataset = input_dataset, pick_metric_1 = pick_metric_1) +
       plot_annotation(title = title_text)
     
     return(output_single_metric_graph)
     
   }else{
     
-    title_text = paste0(pick_metric_1, ' & ', pick_metric_2, ' in ', 
-                        paste0(pick_msa, collapse=' and '), ', ', min(input_dataset$year), '-', 
-                        max(input_dataset$year))
+    title_text = paste0(metric_prep$metric_label_short[metric_prep$metric == pick_metric_1], ' & ', 
+                        metric_prep$metric_label_short[metric_prep$metric == pick_metric_2], ' in ', 
+                        paste0(msa_prep$msa_label_short[msa_prep$msa %in% pick_msa], collapse=' and '), 
+                        ', ', min(input_dataset$year), '-', max(input_dataset$year))
     
     output_double_metric_graph = 
       func_ratio_graph(input_dataset = input_dataset, pick_metric_1 = pick_metric_1, 
-                       pick_metric_2 = pick_metric_2) +
+                       pick_metric_2 = pick_metric_2, ratio_toggle = ratio_toggle) +
       plot_annotation(title = title_text)
     
     return(output_double_metric_graph)
