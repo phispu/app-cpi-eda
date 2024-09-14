@@ -44,7 +44,7 @@ metric_prep = fred_data |>
   arrange(metric_label_short) 
 
 metric_prep_2 = metric_prep |>
-  rbind(c(msa = 'None', metric_label_short = NA, metric_label_long = NA))
+  rbind(c(msa = 'None', metric_label_short = 'None', metric_label_long = 'None'))
 
 ## App 
 # UI #############################
@@ -60,14 +60,16 @@ ui <- bslib::page_navbar(
                            choiceValues = msa_prep$msa, 
                            choiceNames = msa_prep$msa_label_short,
                            selected = "SFO"),
-        radioButtons(inputId = "yr_smetric1", label = "Metric 1",
-                     choiceValues = metric_prep$metric,
-                     choiceNames = metric_prep$metric_label_short,
-                     selected = 'cpi_all'),
-        radioButtons(inputId = "yr_smetric2", label = "Metric 2",
-                     choiceValues = metric_prep_2$metric,
-                     choiceNames = metric_prep_2$metric_label_short,
-                     selected = 'None'),
+        uiOutput('metric_1'),
+        # radioButtons(inputId = "yr_smetric1", label = "Metric 1",
+        #              choiceValues = metric_prep$metric,
+        #              choiceNames = metric_prep$metric_label_short,
+        #              selected = 'cpi_all'),
+        # radioButtons(inputId = "yr_smetric2", label = "Metric 2",
+        #                 choiceValues = metric_prep_2$metric[metric_prep_2$metric != i],
+        #                 choiceNames = metric_prep_2$metric_label_short[metric_prep_2$metric != i],
+        #                 selected = 'None'),
+        uiOutput('metric_2'),
         conditionalPanel(
           condition = "input.yr_smetric2 != 'None'", 
           checkboxInput(inputId = "ratio", label = "Plot Ratios?",
@@ -113,6 +115,32 @@ ui <- bslib::page_navbar(
 
 # Server #############################
 server <- function(input, output, session) {
+  
+  output$metric_1 <- renderUI({
+    
+    radioButtons(inputId = "yr_smetric1", label = "Metric 1",
+               choiceValues = metric_prep$metric,
+               choiceNames = metric_prep$metric_label_short,
+               selected = 'cpi_all')
+    
+  })
+  
+  metric_2_options <- reactive({
+    
+    data <- metric_prep_2 |>
+      filter(metric != input$yr_smetric1)
+    
+  })
+  
+  output$metric_2 <- renderUI({
+    
+    req(metric_2_options())
+    radioButtons(inputId = "yr_smetric2", label = "Metric 2",
+                 choiceValues = metric_2_options$metric,
+                 choiceNames = metric_2_options$metric_label_short,
+                 selected = 'None')
+    
+  })
   
   # Clean Data
   clean_yr <- reactive({

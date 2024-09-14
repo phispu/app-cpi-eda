@@ -27,7 +27,7 @@ func_single_graph = function(input_dataset, pick_metric_1){
   single_line_graph = input_dataset |>
     ggplot2::ggplot(aes(x = year, y = value)) +
     #axis for metric 1
-    ggplot2::geom_line(aes(color = msa_label_short), linewidth = 2) +
+    ggplot2::geom_line(aes(color = msa_label_short), linewidth = 1) +
     ggplot2::labs(x = 'Year', 
                   y = metric_label_1) +
     ggplot2::theme_minimal() +
@@ -36,7 +36,7 @@ func_single_graph = function(input_dataset, pick_metric_1){
     ggplot2::theme(legend.title = element_text('hjust', size = 20, color = 'white'),
                    legend.text = element_text(size = 20, color = 'white'),
                    axis.text = element_text(size = 20, color = 'white'),
-                   axis.title = element_text(size = 20, color = 'white')) 
+                   axis.title = element_text(size = 20, color = 'white'))
   
   return(single_line_graph)
   
@@ -70,10 +70,10 @@ func_ratio_graph = function(input_dataset, pick_metric_1, pick_metric_2, ratio_t
     ggplot2::ggplot(aes(x = year)) +
     #axis for metric 1
     ggplot2::geom_line(aes(y = metric_1, 
-                           color = msa_label_short), linetype = 'solid', linewidth = 2) +
+                           color = msa_label_short), linetype = 'solid', linewidth = 1) +
     #axis for metric 2
     ggplot2::geom_line(aes(y = secondary_axis$fwd(metric_2), 
-                           color = msa_label_short), linetype = 'longdash', linewidth = 2) +
+                           color = msa_label_short), linetype = 'longdash', linewidth = 1) +
     ggplot2::xlim(c(min_year, max_year)) +
     ggplot2::scale_color_manual(values = colors) +
     ggplot2::scale_y_continuous(sec.axis = sec_axis(~secondary_axis$rev(.), name = metric_label_2)) +
@@ -92,7 +92,7 @@ func_ratio_graph = function(input_dataset, pick_metric_1, pick_metric_2, ratio_t
     dplyr::filter(metric == pick_ratio) |>
     ggplot2::ggplot(aes(x = year, 
                         y = value)) + 
-    ggplot2::geom_line(aes(color = msa_label_short), linewidth = 2) +
+    ggplot2::geom_line(aes(color = msa_label_short), linewidth = 1) +
     ggplot2::xlim(c(min_year, max_year)) +
     ggplot2::labs(x = "Year", 
                   y = paste0("Ratio of ", metric_label_1, " to ", metric_label_2, sep = ''), 
@@ -133,7 +133,8 @@ wrapper_graph_function = function(input_dataset, pick_msa, pick_metric_1, pick_m
     
     output_single_metric_graph = 
       func_single_graph(input_dataset = input_dataset, pick_metric_1 = pick_metric_1) +
-      plot_annotation(title = title_text)
+      plot_annotation(title = title_text,
+                      theme = theme(plot.title = element_text(size = 20, color = 'white')))
     
     return(output_single_metric_graph)
     
@@ -147,23 +148,12 @@ wrapper_graph_function = function(input_dataset, pick_msa, pick_metric_1, pick_m
     output_double_metric_graph = 
       func_ratio_graph(input_dataset = input_dataset, pick_metric_1 = pick_metric_1, 
                        pick_metric_2 = pick_metric_2, ratio_toggle = ratio_toggle) +
-      plot_annotation(title = title_text)
+      plot_annotation(title = title_text,
+                      theme = theme(plot.title = element_text(size = 20, color = 'white')))
     
     return(output_double_metric_graph)
     
   }
   
 }
-
-#fred_msa <- fred_data |> 
-  #dplyr::filter(msa %in% c('SFO', 'NEW'))
-
-#fred_smetric <- fred_msa |> 
- # dplyr::filter(metric %in% 
- #                 c('cpi_all', 'personal_income', str_c('personal_income', '_', 
-  #                                                              'cpi_all')))
-
-#wrapper_graph_function(input_dataset = fred_smetric, pick_msa = c('SFO', 'NEW'), pick_metric_1 = 'personal_income', pick_metric_2 = 'cpi_all')
-
-
 
