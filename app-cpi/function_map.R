@@ -1,4 +1,4 @@
-func_map_static = function(input_data, state_data, input_metric, map_psize, map_tsize) {
+func_map_static <- function(input_data, state_data, input_metric, map_psize, map_tsize) {
   
   ggplot(data = input_data) +
     geom_sf(data = state_data, fill = "white") +
@@ -16,7 +16,7 @@ func_map_static = function(input_data, state_data, input_metric, map_psize, map_
   
 }
 
-func_map_animate = function(input_data, state_data, input_metric, map_psize, map_tsize){
+func_map_animate <- function(input_data, state_data, input_metric, map_psize, map_tsize){
   
   plot_map <- ggplot(data = input_data) +
     geom_sf(data = state_data, fill = "white") +
