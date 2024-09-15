@@ -6,7 +6,7 @@ library(here)
 library(sf)
 library(arrow)
 library(sfarrow)
-library(rmapshaper)
+# library(rmapshaper)
 
 data_file_path = here('app-cpi/app_data/')
 
@@ -15,9 +15,11 @@ data_file_path = here('app-cpi/app_data/')
 fred_prelim <- arrow::read_parquet(paste0(data_file_path, "/fred_data_pull.parquet"))
 
 # Import state outline shape 
-states_sf <- tigris::states(year = 2010) |> 
-  tigris::shift_geometry() |> # Shift AK/HI to be closer to contiguous US map
-  rmapshaper::ms_simplify() # simplify maps so plots faster
+states_sf <- tigris::states(year = 2010, cb = TRUE) |> 
+  tigris::shift_geometry() # Shift AK/HI to be closer to contiguous US map
+  # sf::st_cast(states_sf, "MULTIPOLYGON") # w/o cb, need to convert all to same polygons for interactive map
+  # rmapshaper::ms_simplify() # simplify maps so plots faster
+
 
 sfarrow::st_write_parquet(states_sf, paste0(data_file_path, "/states_sf.parquet")) 
 
