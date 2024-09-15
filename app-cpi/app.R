@@ -31,7 +31,7 @@ fred_data = arrow::read_parquet(paste0(data_file_path, "/fred_data_clean.parquet
 # Spatial: states
 states_sf <- st_read_parquet(paste0(data_file_path, "/states_sf.parquet")) 
 
-source(here('app-cpi/function_line_graph.R'))
+#source(here('app-cpi/function_line_graph.R'))
 source(here('app-cpi/function_map.R'))
 
 msa_prep = fred_data |>
@@ -45,6 +45,25 @@ metric_prep = fred_data |>
 
 metric_prep_2 = metric_prep |>
   rbind(c(msa = 'None', metric_label_short = 'None', metric_label_long = 'None'))
+
+func_secondary_axis <- function(primary, secondary) {
+  
+  from <- range(secondary, na.rm = TRUE)
+  to   <- range(primary, na.rm = TRUE)
+  
+  # Forward transform for the data
+  forward <- function(x) {
+    scales::rescale(x, from = from, to = to)
+  }
+  
+  # Reverse transform for the secondary axis
+  reverse <- function(x) {
+    scales::rescale(x, from = to, to = from)
+  }
+  
+  list(fwd = forward, rev = reverse)
+  
+}
 
 ## App 
 # UI #############################
@@ -60,19 +79,17 @@ ui <- bslib::page_navbar(
                            choiceValues = msa_prep$msa, 
                            choiceNames = msa_prep$msa_label_short,
                            selected = "SFO"),
-        uiOutput('metric_1'),
-        # radioButtons(inputId = "yr_smetric1", label = "Metric 1",
-        #              choiceValues = metric_prep$metric,
-        #              choiceNames = metric_prep$metric_label_short,
-        #              selected = 'cpi_all'),
-        # radioButtons(inputId = "yr_smetric2", label = "Metric 2",
-        #                 choiceValues = metric_prep_2$metric[metric_prep_2$metric != i],
-        #                 choiceNames = metric_prep_2$metric_label_short[metric_prep_2$metric != i],
-        #                 selected = 'None'),
-        uiOutput('metric_2'),
+        radioButtons(inputId = "yr_smetric1", label = "Metric 1",
+                     choiceValues = metric_prep$metric,
+                     choiceNames = metric_prep$metric_label_short,
+                     selected = 'cpi_all'),
+        radioButtons(inputId = "yr_smetric2", label = "Metric 2",
+                        choiceValues = metric_prep_2$metric,
+                        choiceNames = metric_prep_2$metric_label_short,
+                        selected = 'None'),
         conditionalPanel(
           condition = "input.yr_smetric2 != 'None'", 
-          checkboxInput(inputId = "ratio", label = "Plot Ratios?",
+          checkboxInput(inputId = "toggle_ratio", label = "Plot Ratios?",
                         value = FALSE)),
         strong("Plotting Options"),
         sliderInput(inputId = "yr_tsize", label = "Text Size",
@@ -116,32 +133,6 @@ ui <- bslib::page_navbar(
 # Server #############################
 server <- function(input, output, session) {
   
-  output$metric_1 <- renderUI({
-    
-    radioButtons(inputId = "yr_smetric1", label = "Metric 1",
-               choiceValues = metric_prep$metric,
-               choiceNames = metric_prep$metric_label_short,
-               selected = 'cpi_all')
-    
-  })
-  
-  metric_2_options <- reactive({
-    
-    data <- metric_prep_2 |>
-      filter(metric != input$yr_smetric1)
-    
-  })
-  
-  output$metric_2 <- renderUI({
-    
-    req(metric_2_options())
-    radioButtons(inputId = "yr_smetric2", label = "Metric 2",
-                 choiceValues = metric_2_options$metric,
-                 choiceNames = metric_2_options$metric_label_short,
-                 selected = 'None')
-    
-  })
-  
   # Clean Data
   clean_yr <- reactive({
     
@@ -155,6 +146,22 @@ server <- function(input, output, session) {
     
     # Return
     fred_smetric = fred_smetric
+    
+  })
+  
+  ratio_on_off <- reactive({
+    
+    if(exists('toggle_ratio')){
+      
+      ratio_on_off_flag = input$toggle_ratio
+      
+    }else{
+      
+      ratio_on_off_flag = FALSE
+      
+    }
+    
+    ratio_on_off_flag = ratio_on_off_flag
     
   })
   
@@ -202,9 +209,111 @@ server <- function(input, output, session) {
     
     fred_smetric <- clean_yr() 
     
-    plot = wrapper_graph_function(
-      input_dataset = fred_smetric, pick_msa = input$yr_smsa, pick_metric_1 = input$yr_smetric1, 
-      pick_metric_2 = input$yr_smetric2, ratio_toggle = input$ratio)
+    ratio_on_off_flag <- ratio_on_off()
+  
+    if(input$yr_smetric2 == 'None'){
+      
+      metric_label_1 = metric_prep$metric_label_short[metric_prep$metric == input$yr_smetric1]
+      msa_label = msa_prep$msa_label_short[msa_prep$msa %in% input$yr_smsa]
+        
+        title_text = paste0(metric_label_1, ' in ', paste0(msa_label, collapse = ' and '), ', ', 
+                            min(fred_smetric$year), '-', max(fred_smetric$year))
+        
+        plot = fred_smetric |>
+          ggplot2::ggplot(aes(x = year, y = value)) +
+          #axis for metric 1
+          ggplot2::geom_line(aes(color = msa_label_short), linewidth = 1) +
+          ggplot2::labs(x = 'Year', 
+                        y = metric_label_1) +
+          ggplot2::theme_minimal() +
+          ggplot2::scale_color_manual(values = colors) +
+          ggplot2::guides(color = guide_legend(title = "City")) +
+          ggplot2::theme(legend.title = element_text('hjust', size = 20, color = 'white'),
+                         legend.text = element_text(size = 20, color = 'white'),
+                         axis.text = element_text(size = 20, color = 'white'),
+                         axis.title = element_text(size = 20, color = 'white')) +
+          plot_annotation(title = title_text,
+                          theme = theme(plot.title = element_text(size = 20, color = 'white')))
+        
+      }else{
+        
+        metric_label_1 = metric_prep$metric_label_short[metric_prep$metric == input$yr_smetric1]
+        metric_label_2 = metric_prep$metric_label_short[metric_prep$metric == input$yr_smetric2]
+        msa_label = msa_prep$msa_label_short[msa_prep$msa %in% input$yr_smsa]
+        
+        title_text = paste0(metric_label_1, ' & ', 
+                            metric_label_2, ' in ', 
+                            paste0(msa_label, collapse=' and '), 
+                            ', ', min(fred_smetric$year), '-', max(fred_smetric$year))
+        
+        pick_ratio = paste(input$yr_smetric1, input$yr_smetric2, sep = '_')
+        
+        fred_filter_msa_base = fred_smetric |>
+          dplyr::filter(metric %in% c(input$yr_smetric1, input$yr_smetric2)) |>
+          dplyr::mutate(
+            metric = dplyr::case_when(
+              metric == input$yr_smetric1 ~ 'metric_1',
+              metric == input$yr_smetric2 ~ 'metric_2')) |>
+          tidyr::pivot_wider(id_cols = c(year, msa, msa_label_short), names_from = metric, values_from = value) 
+        
+        secondary_axis = with(fred_filter_msa_base, func_secondary_axis(metric_1, metric_2))
+        
+        min_year = min(fred_filter_msa_base$year)
+        max_year = max(fred_filter_msa_base$year)
+        
+        # top facet, both metrics plotted at same time 
+        p1 = fred_filter_msa_base |>
+          ggplot2::ggplot(aes(x = year)) +
+          #axis for metric 1
+          ggplot2::geom_line(aes(y = metric_1, 
+                                 color = msa_label_short), linetype = 'solid', linewidth = 1) +
+          #axis for metric 2
+          ggplot2::geom_line(aes(y = secondary_axis$fwd(metric_2), 
+                                 color = msa_label_short), linetype = 'longdash', linewidth = 1) +
+          ggplot2::xlim(c(min_year, max_year)) +
+          ggplot2::scale_color_manual(values = colors) +
+          ggplot2::scale_y_continuous(sec.axis = sec_axis(~secondary_axis$rev(.), name = metric_label_2)) +
+          ggplot2::labs(x = element_blank(),
+                        y = metric_label_1) +
+          ggplot2::theme_minimal() +
+          ggplot2::theme(legend.title = element_text('hjust', size = 20, color = 'white'),
+                         legend.text = element_text(size = 20, color = 'white'),
+                         axis.text = element_text(size = 20, color = 'white'),
+                         axis.title = element_text(size = 20, color = 'white'))
+        
+        if(ratio_on_off_flag == TRUE) {
+        
+          #bottom facet, ratio plotted 
+          p2 = fred_smetric |>
+            dplyr::filter(metric == pick_ratio) |>
+            ggplot2::ggplot(aes(x = year, 
+                                y = value)) + 
+            ggplot2::geom_line(aes(color = msa_label_short), linewidth = 1) +
+            ggplot2::xlim(c(min_year, max_year)) +
+            ggplot2::labs(x = "Year", 
+                          y = paste0("Ratio of ", metric_label_1, " to ", metric_label_2, sep = ''), 
+                          color = "msa_label_short") + 
+            ggplot2::theme_minimal() +
+            ggplot2::scale_color_manual(values = colors) +
+            ggplot2::theme(legend.title = element_text('hjust', size = 20, color = 'white'),
+                           legend.text = element_text(size = 20, color = 'white'),
+                           axis.text = element_text(size = 20, color = 'white'),
+                           axis.title = element_text(size = 20, color = 'white'))
+          
+          #stack plots together 
+          ratio_line_graph = p1 + p2 + plot_layout(ncol = 1, nrow = 2)
+          
+        }else{
+          
+          ratio_line_graph = p1
+          
+        }
+        
+        plot = ratio_line_graph + plot_annotation(title = title_text,
+                        theme = theme(plot.title = element_text(size = 20, color = 'white')))
+        
+      }
+    
     
     plot
     
