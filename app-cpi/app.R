@@ -17,6 +17,7 @@ library(sfarrow)
 library(gifski)
 library(av)
 library(ggtext)
+library(sass)
 
 
 
@@ -41,8 +42,7 @@ metric_prep = fred_data |>
 
 
 ## OTHER setup
-  # Unite ggplot2 theming with shiny
-thematic::thematic_shiny()
+
   # Specify color scheme
 colors <-  c('#A5CDF3', # Uranian blue
              "#ee964b", # sandy brown
@@ -52,6 +52,7 @@ colors <-  c('#A5CDF3', # Uranian blue
              '#BB6011', # Alloy orange
              '#395016', # Dark moss green 
              "#e1faf9") # light cyan 
+
   # Create function for creating secondary axis when plotting 2 metrics 
 func_secondary_axis <- function(primary, secondary) {
   
@@ -71,13 +72,12 @@ func_secondary_axis <- function(primary, secondary) {
   list(fwd = forward, rev = reverse)
 }
 
-
-
 ## App 
 # UI #############################
 ui <- bslib::page_navbar(
-  title = "Fred Reserve Economic Data Dashboard",
-  theme = bs_theme(bootswatch = "darkly"),
+  title = "Economic Data Trends By City ",
+  bg = colors[1],
+  theme = bs_theme(bootswatch = 'darkly'),
   # Tab 1: Across Time
   nav_panel(
     title = "Time Trends", 
@@ -157,12 +157,18 @@ ui <- bslib::page_navbar(
             card(
                  DT::DTOutput(outputId ="fred_clean_df") %>% withSpinner())),
   # Tab 4: About
-  nav_panel(title = "About")
+  nav_panel(title = "About",
+            card(includeMarkdown('../README.md')))
 )
+
+# Unite ggplot2 theming with shiny
+thematic::thematic_shiny()
 
 
 # Server #############################
 server <- function(input, output, session) {
+  
+  
   
   ### Clean Data ###
   # Year
@@ -315,7 +321,8 @@ server <- function(input, output, session) {
                            linetype = 'longdash', linewidth = 1) +
         ggplot2::xlim(c(min_year, max_year)) +
         ggplot2::scale_color_manual(values = colors) +
-        ggplot2::scale_y_continuous(sec.axis = sec_axis(~secondary_axis$rev(.), name = metric_label_2)) +
+        ggplot2::scale_y_continuous(sec.axis = sec_axis(~secondary_axis$rev(.), 
+                                                        name = paste0(metric_label_2, ' (dashed)'))) +
         ggplot2::guides(color = guide_legend(title = "City")) +
         ggplot2::labs(x = element_blank(), y = metric_label_1, title = title_text) +
         ggplot2::theme_minimal() +
@@ -391,6 +398,7 @@ server <- function(input, output, session) {
         theme_void() +
         guides(color = guide_legend(title = input$smetric),
                size = guide_legend(title = input$smetric)) +
+        scale_color_gradient(low = colors[1], high = colors[2]) +
         theme(legend.position = "bottom",
               panel.background = element_rect(fill = "#2d2d2d"),
               plot.background = element_rect(fill = "#2d2d2d"),
@@ -420,6 +428,7 @@ server <- function(input, output, session) {
                   size.unit = "pt", size = input$map_tsize*0.9,
                   color = "white") +
         scale_alpha_continuous(range = c(0.4, 1)) +
+        scale_color_gradient(low = colors[1], high = colors[2]) +
         theme_void() +
         guides(color = guide_legend(title = input$smetric),
                size = guide_legend(title = input$smetric)) +
@@ -432,7 +441,8 @@ server <- function(input, output, session) {
       anim_save(filename = "outfile.gif",
                 gganimate::animate(plot_map, renderer = gifski_renderer(), 
                                    bg = "#2d2d2d", 
-                                   nframes = 20, height = 700, width = 1000))
+                                   nframes = 20, height = 700, width = 1000,
+                                   fps = 5))
       # Return a list containing the filename
       list(src = "outfile.gif", contentType = "image/gif")
     }
