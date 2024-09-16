@@ -2,7 +2,7 @@
 
 This application is designed to allow users to explore a variety of economic statistics by United States city. These metrics can be visualized over time, in reference to other metrics, and/or by mapping. 
 
-[Application](link)
+[Application](https://phispu.shinyapps.io/app-cpi/)
 <br>
 [Github](https://github.com/phispu/app-cpi-eda)
 
